@@ -101,7 +101,7 @@ class Guidelines:
         if not config or "platform_map" not in config:
             LOG.debug("Using default platform map")
             return DEFAULT_PLATFORMS_MAP
-        return json.dumps(config["platform_map"])
+        return json.dumps(config["platformMap"])
 
     def get_guideline_list(self):
         """Return a list of a guideline files.
