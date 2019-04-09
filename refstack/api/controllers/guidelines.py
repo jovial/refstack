@@ -97,3 +97,22 @@ class GuidelinesController(rest.RestController):
         else:
             pecan.abort(500, 'The server was unable to get the JSON '
                              'content for the specified guideline file.')
+
+
+class PlatformMapController(rest.RestController):
+    """/v1/platforms handler.
+
+    This acts as a proxy for retrieving the platform map
+    from the openstack/interop Github repository.
+    """
+
+    @pecan.expose('json')
+    def get(self):
+        """Handler for getting the platform map."""
+        g = guidelines.Guidelines()
+        json = g.get_platform_map()
+        if json:
+            return json
+        else:
+            pecan.abort(500, 'The server was unable to get the JSON '
+                             'content for the specified guideline file.')

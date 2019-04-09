@@ -63,6 +63,7 @@
         ctrl.target = 'platform';
 
         /** Mappings of Interop WG components to marketing program names. */
+        // TODO: hardcoding
         ctrl.targetMappings = {
             'platform': 'Openstack Powered Platform',
             'compute': 'OpenStack Powered Compute',

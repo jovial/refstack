@@ -16,7 +16,9 @@
 """Version 1 of the API."""
 
 from refstack.api.controllers import auth
-from refstack.api.controllers import guidelines
+from refstack.api.controllers.guidelines import (
+    GuidelinesController, PlatformMapController
+)
 from refstack.api.controllers import products
 from refstack.api.controllers import results
 from refstack.api.controllers import user
@@ -27,8 +29,9 @@ class V1Controller(object):
     """Version 1 API controller root."""
 
     results = results.ResultsController()
-    guidelines = guidelines.GuidelinesController()
+    guidelines = GuidelinesController()
     auth = auth.AuthController()
     profile = user.ProfileController()
     products = products.ProductsController()
     vendors = vendors.VendorsController()
+    platforms = PlatformMapController()

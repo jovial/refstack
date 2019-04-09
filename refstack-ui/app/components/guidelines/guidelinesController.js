@@ -31,14 +31,21 @@
         var ctrl = this;
 
         ctrl.getVersionList = getVersionList;
+        ctrl.updatePlatformMap = updatePlatformMap;
         ctrl.update = update;
         ctrl.updateTargetCapabilities = updateTargetCapabilities;
         ctrl.filterStatus = filterStatus;
         ctrl.getObjectLength = getObjectLength;
         ctrl.openTestListModal = openTestListModal;
         ctrl.updateVersionList = updateVersionList;
+
+        ctrl.platformMap = {};
+        ctrl.platformMapOptions = {};
+
+        // TODO: first value in platform map ?
         ctrl.gl_type = 'powered';
 
+        // TODO: first value in platform map ?
         /** The target OpenStack marketing program to show capabilities for. */
         ctrl.target = 'platform';
 
@@ -84,6 +91,25 @@
                 $http.get(content_url).success(function (data) {
                     ctrl.guidelineData = data;
                     updateVersionList();
+                }).error(function (error) {
+                    ctrl.showError = true;
+                    ctrl.error = 'Error retrieving version list: ' +
+                        angular.toJson(error);
+                });
+        }
+
+        function updatePlatformMap() {
+            var content_url = refstackApiUrl + '/platforms';
+            ctrl.versionsRequest =
+                $http.get(content_url).success(function (data) {
+                    ctrl.platformMapOptions = {};
+                    ctrl.platformMap = {};
+                    var base = data["base"]
+                    for (var property in base) {
+                         // invert keys and values for the dropdown
+                         ctrl.platformMapOptions[base[property]] = property;
+                    }
+                    ctrl.platformMap = data
                 }).error(function (error) {
                     ctrl.showError = true;
                     ctrl.error = 'Error retrieving version list: ' +
@@ -159,14 +185,9 @@
                 if ('add-ons' in ctrl.guidelines) {
                     targetComponents = ['os_powered_' + ctrl.target];
                 } else if (ctrl.schema >= '2.0') {
-                    var platformsMap = {
-                        'platform': 'OpenStack Powered Platform',
-                        'compute': 'OpenStack Powered Compute',
-                        'object': 'OpenStack Powered Storage'
-                    };
-
+                    var platformMap = ctrl.platformMap["base"]
                     targetComponents = ctrl.guidelines.platforms[
-                        platformsMap[ctrl.target]].components.map(
+                        platformMap[ctrl.target]].components.map(
                             function(c) {
                                 return c.name;
                             }
@@ -279,6 +300,7 @@
             });
         }
         ctrl.getVersionList();
+        ctrl.updatePlatformMap();
     }
 
     angular

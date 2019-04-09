@@ -14,12 +14,8 @@
     <div class="col-md-4">
         <strong>Target Program:</strong>
         <span class="program-about"><a target="_blank" href="http://www.openstack.org/brand/interop/">About</a></span>
-        <select ng-model="ctrl.target" class="form-control" ng-change="ctrl.updateTargetCapabilities()">
-            <option value="platform">OpenStack Powered Platform</option>
-            <option value="compute">OpenStack Powered Compute</option>
-            <option value="object">OpenStack Powered Object Storage</option>
-            <option value="dns">OpenStack with DNS</option>
-            <option value="orchestration">OpenStack with Orchestration</option>
+        <select ng-model="ctrl.target" class="form-control" ng-change="ctrl.updateTargetCapabilities()"
+                ng-options="x for (x, y) in ctrl.platformMapOptions">
         </select>
     </div>
 </div>

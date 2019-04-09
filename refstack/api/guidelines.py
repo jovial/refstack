@@ -22,6 +22,20 @@ from operator import itemgetter
 import re
 import requests
 import requests_cache
+import json
+
+CONFIG_FILE_NAME = "config.json"
+
+DEFAULT_PLATFORMS_MAP = {
+    "base": {
+        'platform': 'OpenStack Powered Platform',
+        'compute': 'OpenStack Powered Compute',
+        'object': 'OpenStack Powered Storage',
+        'dns': 'OpenStack with DNS',
+        'orchestration': 'OpenStack with Orchestration'
+    },
+    "add-ons": ["dns", "orchestration"]
+}
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -63,6 +77,31 @@ class Guidelines:
             self.raw_url = raw_url
         else:
             self.raw_url = CONF.api.github_raw_base_url
+        self.config_url = ''.join(
+            (self.raw_url.rstrip('/'), '/', CONFIG_FILE_NAME)
+        )
+
+    def _get_config(self):
+        try:
+            resp = requests.get(self.config_url)
+            if resp.status_code == 200:
+                return resp.json()
+            else:
+                LOG.warning('Guidelines repo URL (%s) returned '
+                            'non-success HTTP code: %s' %
+                            (self.config_url, resp.status_code))
+                return json.dumps({})
+        except requests.exceptions.RequestException as e:
+            LOG.warning('An error occurred trying to get config '
+                        'contents through %s: %s' % (self.config_url, e))
+
+    def get_platform_map(self):
+        config_json = self._get_config()
+        config = json.loads(config_json)
+        if not config or "platform_map" not in config:
+            LOG.debug("Using default platform map")
+            return DEFAULT_PLATFORMS_MAP
+        return json.dumps(config["platform_map"])
 
     def get_guideline_list(self):
         """Return a list of a guideline files.
@@ -153,23 +192,16 @@ class Guidelines:
         If no list of types in given, then capabilities of all types
         are given. If not target is specified, then all capabilities are given.
         """
+        platforms_map = self.get_platform_map()
         components = guideline_json['components']
         if ('metadata' in guideline_json and
                 guideline_json['metadata']['schema'] >= '2.0'):
             schema = guideline_json['metadata']['schema']
-            platformsMap = {
-                'platform': 'OpenStack Powered Platform',
-                'compute': 'OpenStack Powered Compute',
-                'object': 'OpenStack Powered Storage',
-                'dns': 'OpenStack with DNS',
-                'orchestration': 'OpenStack with Orchestration'
-
-            }
-            if target == 'dns' or target == 'orchestration':
+            if target in platforms_map["add-ons"]:
                 targets = ['os_powered_' + target]
             else:
                 comps = \
-                    guideline_json['platforms'][platformsMap[target]
+                    guideline_json['platforms'][platforms_map["base"][target]
                                                 ]['components']
                 targets = (obj['name'] for obj in comps)
         else:
