@@ -96,8 +96,7 @@ class Guidelines:
                         'contents through %s: %s' % (self.config_url, e))
 
     def get_platform_map(self):
-        config_json = self._get_config()
-        config = json.loads(config_json)
+        config = self._get_config()
         if not config or "platform_map" not in config:
             LOG.debug("Using default platform map")
             return DEFAULT_PLATFORMS_MAP
