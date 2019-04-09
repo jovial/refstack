@@ -97,7 +97,7 @@ class Guidelines:
 
     def get_platform_map(self):
         config = self._get_config()
-        if not config or "platform_map" not in config:
+        if not config or "platformMap" not in config:
             LOG.debug("Using default platform map")
             return DEFAULT_PLATFORMS_MAP
         return json.dumps(config["platformMap"])
