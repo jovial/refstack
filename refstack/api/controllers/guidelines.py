@@ -34,8 +34,6 @@ class TestsController(rest.RestController):
     @pecan.expose(content_type='text/plain')
     def get(self, version):
         """Get the plain-text test list of the specified guideline version."""
-        # Remove the .json from version if it is there.
-        version.replace('.json', '')
         g = guidelines.Guidelines()
         json = g.get_guideline_contents(version)
 
