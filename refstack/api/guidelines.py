@@ -108,6 +108,7 @@ class Guidelines:
         The repository url specificed in class instantiation is checked
         for a list of JSON guideline files. A list of these is returned.
         """
+        capability_files = {}
         capability_list = []
         powered_files = []
         addon_files = []
@@ -127,8 +128,7 @@ class Guidelines:
                                     rfile[
                                         'name'] not in map(itemgetter('name'),
                                                            addon_files):
-                                file_dict = {'name': rfile['name'],
-                                             'file': rfile['path']}
+                                file_dict = {'name': rfile['name']}
                                 addon_files.append(file_dict)
                             elif 'add-ons' not in rfile['path'] and \
                                 rfile['name'] not in map(itemgetter('name'),
@@ -146,19 +146,26 @@ class Guidelines:
                             'contents through %s: %s' % (src_url, e))
         for k, v in itertools.groupby(addon_files,
                                       key=lambda x: x['name'].split('.')[0]):
-            values = [{'name': x['name'].split('.', 1)[1], 'file': x['file']}
+            values = [{'name': x['name'].split('.', 1)[1], 'file': x['name']}
                       for x in list(v)]
             capability_list.append((k, list(values)))
         capability_list.append(('powered', powered_files))
-        capability_files = dict(capability_list)
+        capability_files = dict((x, y) for x, y in capability_list)
         return capability_files
 
-    def get_guideline_contents(self, guideline_path):
+    def get_guideline_contents(self, gl_file):
         """Get contents for a given guideline path."""
+        if '.json' not in gl_file:
+            gl_file = '.'.join((gl_file, 'json'))
+        regex = re.compile("[a-z]*\.([0-9]{4}\.[0-9]{2}|next)\.json")
+        if regex.search(gl_file):
+            guideline_path = 'add-ons/' + gl_file
+        else:
+            guideline_path = gl_file
+
         file_url = ''.join((self.raw_url.rstrip('/'),
                             '/', guideline_path))
-
-        LOG.debug("file_url: %s" % file_url)
+        LOG.debug("file_url: %s" % (file_url))
         try:
             response = requests.get(file_url)
             LOG.debug("Response Status: %s / Used Requests Cache: %s" %

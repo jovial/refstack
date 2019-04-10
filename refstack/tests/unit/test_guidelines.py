@@ -61,9 +61,9 @@ class GuidelinesTestCase(base.BaseTestCase):
         ]
         expected_test_addons = [
             {'name': u'2018.02.json',
-             'file': u'add-ons/test.2018.02.json'},
+             'file': u'test.2018.02.json'},
             {'name': u'next.json',
-             'file': u'add-ons/test.next.json'}
+             'file': u'test.next.json'}
         ]
 
         self.assertIn('powered', expected_keys)
