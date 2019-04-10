@@ -72,6 +72,7 @@
         function updateVersionList() {
             let gl_files = ctrl.guidelineData[ctrl.gl_type];
             ctrl.versionList = $filter('orderBy')(gl_files, 'name', true);
+            console.log(ctrl.versionList);
             // Default to the first approved guideline which is expected
             // to be at index 1.
             ctrl.version = ctrl.versionList[1];
@@ -104,12 +105,12 @@
                 $http.get(content_url).success(function (data) {
                     ctrl.platformMapOptions = {};
                     ctrl.platformMap = {};
-                    var base = data["base"]
+                    var base = data["base"];
                     for (var property in base) {
                          // invert keys and values for the dropdown
                          ctrl.platformMapOptions[base[property]] = property;
                     }
-                    ctrl.platformMap = data
+                    ctrl.platformMap = data;
                 }).error(function (error) {
                     ctrl.showError = true;
                     ctrl.error = 'Error retrieving version list: ' +
@@ -185,7 +186,7 @@
                 if ('add-ons' in ctrl.guidelines) {
                     targetComponents = ['os_powered_' + ctrl.target];
                 } else if (ctrl.schema >= '2.0') {
-                    var platformMap = ctrl.platformMap["base"]
+                    var platformMap = ctrl.platformMap["base"];
                     targetComponents = ctrl.guidelines.platforms[
                         platformMap[ctrl.target]].components.map(
                             function(c) {

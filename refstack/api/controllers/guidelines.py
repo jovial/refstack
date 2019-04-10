@@ -19,9 +19,14 @@
 import pecan
 from pecan import rest
 
+import urlparse
+
 from refstack.api import constants as const
 from refstack.api import guidelines
 from refstack.api import utils as api_utils
+
+from oslo_log import log
+LOG = log.getLogger(__name__)
 
 
 class TestsController(rest.RestController):
@@ -75,9 +80,18 @@ class GuidelinesController(rest.RestController):
     tests = TestsController()
 
     @pecan.expose('json')
-    def get(self):
+    def get(self, *args, **kwargs):
         """Get a list of all available guidelines."""
         g = guidelines.Guidelines()
+        LOG.debug("kwargs: %s" % kwargs)
+        LOG.debug("args: %s" % repr(args))
+        if 'path' in kwargs:
+            return self.get_content(kwargs["path"])
+        elif args:
+            # pecan will strip the json extension
+            path = "/".join(args) + ".json"
+            LOG.debug("path: %s" % path)
+            return self.get_content(path)
         version_list = g.get_guideline_list()
         if version_list is None:
             pecan.abort(500, 'The server was unable to get a list of '
@@ -85,11 +99,10 @@ class GuidelinesController(rest.RestController):
         else:
             return version_list
 
-    @pecan.expose('json')
-    def get_one(self, file_name):
+    def get_content(self, path):
         """Handler for getting contents of specific guideline file."""
         g = guidelines.Guidelines()
-        json = g.get_guideline_contents(file_name)
+        json = g.get_guideline_contents(path)
         if json:
             return json
         else:
