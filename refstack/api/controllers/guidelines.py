@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # Copyright (c) 2015 Mirantis, Inc.
 # All Rights Reserved.
@@ -23,6 +24,9 @@ from refstack.api import constants as const
 from refstack.api import guidelines
 from refstack.api import utils as api_utils
 
+from oslo_log import log
+
+LOG = log.getLogger(__name__)
 
 class TestsController(rest.RestController):
     """v1/guidelines/<version>/tests handler.
@@ -32,12 +36,12 @@ class TestsController(rest.RestController):
     """
 
     @pecan.expose(content_type='text/plain')
-    def get(self, version):
+    def get(self, category, version):
         """Get the plain-text test list of the specified guideline version."""
         # Remove the .json from version if it is there.
         version.replace('.json', '')
         g = guidelines.Guidelines()
-        json = g.get_guideline_contents(version)
+        json = g.get_guideline_contents(category=category, version=version)
 
         if not json:
             return 'Error getting JSON content for version: ' + version
@@ -65,6 +69,34 @@ class TestsController(rest.RestController):
             return 'Invalid target: ' + target
 
         return '\n'.join(test_list)
+
+class VersionsController(rest.RestController):
+
+    tests = TestsController()
+
+    @pecan.expose('json')
+    def get(self, category):
+        """Handler for getting versions of a specific target."""
+        g = guidelines.Guidelines()
+        json = g.get_versions(category)
+        if json:
+            return json
+        else:
+            pecan.abort(404, 'The server was unable to get the JSON '
+                             'content for the specified guideline file.')
+
+    @pecan.expose('json')
+    def get_one(self, category, version):
+        """Handler for getting contents of specific guideline file."""
+        LOG.debug("category: %s" % category)
+        LOG.debug("version: %s" % version)
+        g = guidelines.Guidelines()
+        json = g.get_guideline_contents(category=category, version=version)
+        if json:
+            return json
+        else:
+            pecan.abort(500, 'The server was unable to get the JSON '
+                        'content for the specified guideline file.')
 
 
 class GuidelinesController(rest.RestController):
@@ -96,23 +128,50 @@ class GuidelinesController(rest.RestController):
             return json
         else:
             pecan.abort(500, 'The server was unable to get the JSON '
-                             'content for the specified guideline file.')
 
+                        'content for the specified guideline file.')
 
-class PlatformMapController(rest.RestController):
-    """/v1/platforms handler.
+class TargetsController(rest.RestController):
+    """/v1/targets handler.
 
     This acts as a proxy for retrieving the platform map
     from the openstack/interop Github repository.
     """
 
+    versions = VersionsController()
+
     @pecan.expose('json')
-    def get(self):
+    def get(self, **kwargs):
         """Handler for getting the platform map."""
         g = guidelines.Guidelines()
-        json = g.get_platform_map()
-        if json:
-            return json
+        # TODO: return a list
+        platform_map = g.get_platform_map()
+        json = []
+        for k, v in platform_map["base"].items():
+            value = {
+                # TODO: rename to category for consistency
+                "id": k,
+                "description": v,
+                "add-on": k in platform_map["add-ons"]
+            }
+            json.append(value)
+        if "type" in kwargs:
+            typ = kwargs["type"]
+            if typ == "add-ons":
+                json = [x for x in json if x["add-on"]]
+            elif typ == "platform":
+                json = [x for x in json if not x["add-on"]]
+        return json
+
+    @pecan.expose('json')
+    def get_one(self, category):
+        """Handler for getting contents of specific guideline file."""
+        all = self.get()
+        result = [x for x in all if x["id"] == category]
+        if result:
+            return result[0]
         else:
-            pecan.abort(500, 'The server was unable to get the JSON '
-                             'content for the specified guideline file.')
+            pecan.abort(404, 'The server was unable to get the JSON '
+
+                        'content for the specified guideline file.')
+

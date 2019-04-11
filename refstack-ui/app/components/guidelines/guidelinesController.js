@@ -30,7 +30,6 @@
     function GuidelinesController($filter ,$http, $uibModal, refstackApiUrl) {
         var ctrl = this;
 
-        ctrl.getVersionList = getVersionList;
         ctrl.updatePlatformMap = updatePlatformMap;
         ctrl.update = update;
         ctrl.updateTargetCapabilities = updateTargetCapabilities;
@@ -42,7 +41,6 @@
         ctrl.platformMap = {};
         ctrl.platformMapOptions = {};
 
-        // TODO: first value in platform map ?
         ctrl.gl_type = 'powered';
 
         // TODO: first value in platform map ?
@@ -64,33 +62,22 @@
                                'guidelineDetails.html';
 
         /**
-        * Update the array of dictionary objects which stores data
-        * pertaining to each guideline, sorting them in descending
-        * order by guideline name. After these are sorted, the
-        * function to update the capabilities is called.
-        */
+         * Update the array of dictionary objects which stores data
+         * pertaining to each guideline, sorting them in descending
+         * order by guideline name. After these are sorted, the
+         * function to update the capabilities is called.
+         */
         function updateVersionList() {
-            let gl_files = ctrl.guidelineData[ctrl.gl_type];
-            ctrl.versionList = $filter('orderBy')(gl_files, 'name', true);
-            // Default to the first approved guideline which is expected
-            // to be at index 1.
-            ctrl.version = ctrl.versionList[1];
-            update();
-        }
-
-        /**
-         * Retrieve a dictionary object comprised of available guideline types
-         * and and an array of dictionary objects containing file info about
-         * each guideline file pertaining to that particular guideline type.
-         * After a successful API call, the function to sort and update the
-         * version list is called.
-        */
-        function getVersionList() {
-            var content_url = refstackApiUrl + '/guidelines';
+            var content_url = refstackApiUrl + '/targets/' + ctrl.gl_type + "/versions";
             ctrl.versionsRequest =
                 $http.get(content_url).success(function (data) {
-                    ctrl.guidelineData = data;
-                    updateVersionList();
+                    data.sort();
+                    data.reverse();
+                    ctrl.versionList = data;
+                    // Default to the first approved guideline which is expected
+                    // to be at index 1.
+                    ctrl.version = ctrl.versionList[1];
+                    update();
                 }).error(function (error) {
                     ctrl.showError = true;
                     ctrl.error = 'Error retrieving version list: ' +
@@ -99,17 +86,19 @@
         }
 
         function updatePlatformMap() {
-            var content_url = refstackApiUrl + '/platforms';
-            ctrl.versionsRequest =
+            var content_url = refstackApiUrl + '/targets';
+            ctrl.targetsRequest =
                 $http.get(content_url).success(function (data) {
                     ctrl.platformMapOptions = {};
                     ctrl.platformMap = {};
-                    var base = data["base"]
-                    for (var property in base) {
-                         // invert keys and values for the dropdown
-                         ctrl.platformMapOptions[base[property]] = property;
+                    for (var i in data) {
+                        var property = data[i];
+                        // invert keys and values for the dropdown
+                        var id = property["id"];
+                        var description = property["description"];
+                        ctrl.platformMapOptions[description] = id;
+                        ctrl.platformMap[id] = description;
                     }
-                    ctrl.platformMap = data
                 }).error(function (error) {
                     ctrl.showError = true;
                     ctrl.error = 'Error retrieving version list: ' +
@@ -123,11 +112,10 @@
          * version.
          */
         function update() {
-            ctrl.content_url = refstackApiUrl + '/guidelines/'
-                + ctrl.version.file;
-            let get_params = {'gl_file': ctrl.version.file};
+            ctrl.content_url = refstackApiUrl + '/targets/' + ctrl.gl_type + "/versions/"
+                + ctrl.version;
             ctrl.capsRequest =
-                $http.get(ctrl.content_url, get_params).success(
+                $http.get(ctrl.content_url).success(
                 function (data) {
                     ctrl.guidelines = data;
                     if ('metadata' in data && data.metadata.schema >= '2.0') {
@@ -185,7 +173,7 @@
                 if ('add-ons' in ctrl.guidelines) {
                     targetComponents = ['os_powered_' + ctrl.target];
                 } else if (ctrl.schema >= '2.0') {
-                    var platformMap = ctrl.platformMap["base"]
+                    var platformMap = ctrl.platformMap;
                     targetComponents = ctrl.guidelines.platforms[
                         platformMap[ctrl.target]].components.map(
                             function(c) {
@@ -285,10 +273,10 @@
                 size: 'lg',
                 resolve: {
                     version: function () {
-                        return ctrl.version.name.slice(0, -5);
+                        return ctrl.version;
                     },
-                    version_file: function() {
-                        return ctrl.version.file;
+                    gl_type: function() {
+                        return ctrl.gl_type;
                     },
                     target: function () {
                         return ctrl.target;
@@ -299,7 +287,7 @@
                 }
             });
         }
-        ctrl.getVersionList();
+        ctrl.updateVersionList();
         ctrl.updatePlatformMap();
     }
 
@@ -308,8 +296,8 @@
         .controller('TestListModalController', TestListModalController);
 
     TestListModalController.$inject = [
-        '$uibModalInstance', '$http', 'version',
-        'version_file', 'target', 'status',
+        '$uibMod2alInstance', '$http', 'version',
+        'gl_type', 'target', 'status',
         'refstackApiUrl'
     ];
 
@@ -320,12 +308,12 @@
      * statuses.
      */
     function TestListModalController($uibModalInstance, $http, version,
-        version_file, target, status, refstackApiUrl) {
+        gl_type, target, status, refstackApiUrl) {
 
         var ctrl = this;
 
         ctrl.version = version;
-        ctrl.version_file = version_file;
+        ctrl.gl_type = gl_type;
         ctrl.target = target;
         ctrl.status = status;
         ctrl.close = close;
@@ -373,8 +361,10 @@
                 ctrl.error = 'No tests matching selected criteria.';
                 return;
             }
+
             ctrl.testListUrl = [
-                ctrl.url, '/guidelines/', ctrl.version_file, '/tests?',
+                ctrl.url, '/targets/', ctrl.gl_type, "/versions/",
+                ctrl.version, '/tests?',
                 'target=', ctrl.target, '&',
                 'type=', statuses.join(','), '&',
                 'alias=', ctrl.aliases.toString(), '&',

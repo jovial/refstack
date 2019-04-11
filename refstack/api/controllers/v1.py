@@ -17,7 +17,7 @@
 
 from refstack.api.controllers import auth
 from refstack.api.controllers.guidelines import (
-    GuidelinesController, PlatformMapController
+    GuidelinesController, TargetsController
 )
 from refstack.api.controllers import products
 from refstack.api.controllers import results
@@ -34,4 +34,4 @@ class V1Controller(object):
     profile = user.ProfileController()
     products = products.ProductsController()
     vendors = vendors.VendorsController()
-    platforms = PlatformMapController()
+    targets = TargetsController()

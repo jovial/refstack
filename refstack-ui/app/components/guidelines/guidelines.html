@@ -4,11 +4,10 @@
 <div class="row">
     <div class="col-md-3">
         <strong>Version:</strong>
-        <!-- Slicing the version file name here gets rid of the '.json' file extension -->
         <select ng-model="ctrl.version"
                 ng-change="ctrl.update()"
                 class="form-control"
-                ng-options="versionObj.name.slice(0,-5) for versionObj in ctrl.versionList">
+                ng-options="x for x in ctrl.versionList">
         </select>
     </div>
     <div class="col-md-4">
@@ -67,6 +66,7 @@
 <!-- Loading animation divs -->
 <div cg-busy="{promise:ctrl.versionsRequest,message:'Loading versions'}"></div>
 <div cg-busy="{promise:ctrl.capsRequest,message:'Loading capabilities'}"></div>
+<div cg-busy="{promise:ctrl.targetsRequest,message:'Loading targets'}"></div>
 
 <!-- Get the version-specific template -->
 <div ng-include src="ctrl.detailsTemplate"></div>

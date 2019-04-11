@@ -23,10 +23,12 @@ import re
 import requests
 import requests_cache
 import json
+import os
 
 CONFIG_FILE_NAME = "config.json"
 
 DEFAULT_PLATFORMS_MAP = {
+    # TODO: rename targets
     "base": {
         'platform': 'OpenStack Powered Platform',
         'compute': 'OpenStack Powered Compute',
@@ -35,6 +37,12 @@ DEFAULT_PLATFORMS_MAP = {
         'orchestration': 'OpenStack with Orchestration'
     },
     "add-ons": ["dns", "orchestration"]
+    # "versions": {
+    #     "dns": {
+    #         "min": ""
+    #         "max": 
+    #     }
+    # }
 }
 
 CONF = cfg.CONF
@@ -81,6 +89,7 @@ class Guidelines:
             (self.raw_url.rstrip('/'), '/', CONFIG_FILE_NAME)
         )
 
+    # TODO: call this metadata?
     def _get_config(self):
         try:
             resp = requests.get(self.config_url)
@@ -103,6 +112,8 @@ class Guidelines:
         return config["platformMap"]
 
     def get_guideline_list(self):
+        # TODO: the output of this is no longer exposed via rest, so
+        # we could add checkums for instance
         """Return a list of a guideline files.
 
         The repository url specificed in class instantiation is checked
@@ -153,15 +164,20 @@ class Guidelines:
         capability_files = dict((x, y) for x, y in capability_list)
         return capability_files
 
-    def get_guideline_contents(self, gl_file):
-        """Get contents for a given guideline path."""
-        if '.json' not in gl_file:
-            gl_file = '.'.join((gl_file, 'json'))
+    def _is_addon(self, gl_file):
         regex = re.compile("[a-z]*\.([0-9]{4}\.[0-9]{2}|next)\.json")
-        if regex.search(gl_file):
-            guideline_path = 'add-ons/' + gl_file
+        return regex.search(gl_file)
+
+    def get_guideline_contents(self, category, version):
+        """Get contents for a given category and version."""
+
+        if category == "powered":
+            # non-addons
+            guideline_path = version
         else:
-            guideline_path = gl_file
+            guideline_path = "add-ons/%s.%s" % (category, version)
+
+        guideline_path = '.'.join((guideline_path, 'json'))
 
         file_url = ''.join((self.raw_url.rstrip('/'),
                             '/', guideline_path))
@@ -199,9 +215,11 @@ class Guidelines:
             if target in platforms_map["add-ons"]:
                 targets = ['os_powered_' + target]
             else:
-                comps = \
-                    guideline_json['platforms'][platforms_map["base"][target]
-                                                ]['components']
+                platform = platforms_map["base"][target]
+                comps = []
+                if platform in guideline_json['platforms']:
+                    comps = \
+                        guideline_json['platforms'][platform]['components']
                 targets = (obj['name'] for obj in comps)
         else:
             schema = guideline_json['schema']
@@ -219,6 +237,37 @@ class Guidelines:
                 if types is None or status in types:
                     target_caps.update(capabilities)
         return list(target_caps)
+
+    def _get_version(self, guideline_file):
+        # strip the json extension
+        name = os.path.splitext(guideline_file)[0]
+        if self._is_addon(guideline_file):
+            # 0th component is the category e.g dns in dns.2015.07
+            return name.split('.', 1)[1]
+        return name
+
+    def get_versions(self, gl_type):
+        # TODO: use cache if checksums not changed
+        LOG.debug("Using gl_type: %s" % gl_type)
+        guidelines = self.get_guideline_list()
+        versions = set()
+        if gl_type not in guidelines:
+            return []
+        for guideline in guidelines[gl_type]:
+            guideline_file = guideline["file"]
+            version = self._get_version(guideline_file)
+            content = self.get_guideline_contents(category=gl_type, version=version)
+            kwargs = {}
+            if gl_type != "powered":
+                kwargs["target"] = gl_type
+            if self._supports_target(content, **kwargs):
+                versions.add(version)
+        return list(versions)
+
+    def _supports_target(self, guideline_json, **kwargs):
+        if self.get_target_capabilities(guideline_json, **kwargs):
+            return True
+        return False
 
     def get_test_list(self, guideline_json, capabilities=[],
                       alias=True, show_flagged=True):
