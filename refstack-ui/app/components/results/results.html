@@ -119,20 +119,21 @@
                     <br />
 
                     <strong>Associated Guideline:</strong>
+
                     <span ng-if="!result.meta.guideline && !result.guidelineEdit">
                         <em>None</em>
                     </span>
                     <span ng-if="result.meta.guideline && !result.guidelineEdit">
-                        {{result.meta.guideline.slice(0, -5)}}
+                        {{result.meta.guideline}}
                     </span>
                     <select ng-if="result.guidelineEdit"
                             ng-model="result.meta.guideline"
-                            ng-options="o as o.slice(0, -5) for o in ctrl.versionList"
+                            ng-options="o for o in ctrl.versionList"
                             class="form-inline">
                         <option value="">None</option>
                     </select>
                     <a ng-if="!result.guidelineEdit"
-                       ng-click="ctrl.getVersionList();result.guidelineEdit = true"
+                       ng-click="ctrl.updateVersionList(target=result.meta.target);result.guidelineEdit = true"
                        title="Edit"
                        class="glyphicon glyphicon-pencil"></a>
                     <a ng-if="result.guidelineEdit"
@@ -150,13 +151,9 @@
                         {{ctrl.targetMappings[result.meta.target]}}</span>
                     <select ng-if="result.targetEdit"
                             ng-model="result.meta.target"
-                            class="form-inline">
+                            class="form-inline"
+                            ng-options="x for (x, y) in ctrl.targetOptions">
                         <option value="">None</option>
-                        <option value="platform">OpenStack Powered Platform</option>
-                        <option value="compute">OpenStack Powered Compute</option>
-                        <option value="object">OpenStack Powered Object Storage</option>
-                        <option value="dns">OpenStack with DNS</option>
-                        <option value="orchestration">OpenStack with Orchestration</option>
                     </select>
                     <a ng-if="!result.targetEdit"
                        ng-click="result.targetEdit = true;"
@@ -241,6 +238,8 @@
         </uib-pagination>
     </div>
 </div>
+
+<div cg-busy="{promise:ctrl.versionsRequest,message:'Loading versions'}"></div>
 
 <div ng-show="ctrl.showError" class="alert alert-danger" role="alert">
     <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>

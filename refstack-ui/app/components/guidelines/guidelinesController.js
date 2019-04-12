@@ -20,14 +20,16 @@
         .controller('GuidelinesController', GuidelinesController);
 
     GuidelinesController.$inject =
-        ['$filter', '$http', '$uibModal', 'refstackApiUrl'];
+        ['$filter', '$http', '$uibModal', 'refstackApiUrl', 'getVersionList',
+         'getPlatformMap', 'invertObject'];
 
     /**
      * RefStack Guidelines Controller
      * This controller is for the '/guidelines' page where a user can browse
      * through tests belonging to Interop WG defined capabilities.
      */
-    function GuidelinesController($filter ,$http, $uibModal, refstackApiUrl) {
+    function GuidelinesController($filter ,$http, $uibModal, refstackApiUrl, getVersionList,
+                                  getPlatformMap, invertObject) {
         var ctrl = this;
 
         ctrl.updatePlatformMap = updatePlatformMap;
@@ -68,17 +70,14 @@
          * function to update the capabilities is called.
          */
         function updateVersionList() {
-            var content_url = refstackApiUrl + '/targets/' + ctrl.gl_type + "/versions";
             ctrl.versionsRequest =
-                $http.get(content_url).success(function (data) {
-                    data.sort();
-                    data.reverse();
+                getVersionList(ctrl.gl_type).then(function (data) {
                     ctrl.versionList = data;
                     // Default to the first approved guideline which is expected
                     // to be at index 1.
                     ctrl.version = ctrl.versionList[1];
                     update();
-                }).error(function (error) {
+                }).catch(function (error) {
                     ctrl.showError = true;
                     ctrl.error = 'Error retrieving version list: ' +
                         angular.toJson(error);
@@ -86,20 +85,11 @@
         }
 
         function updatePlatformMap() {
-            var content_url = refstackApiUrl + '/targets';
             ctrl.targetsRequest =
-                $http.get(content_url).success(function (data) {
-                    ctrl.platformMapOptions = {};
-                    ctrl.platformMap = {};
-                    for (var i in data) {
-                        var property = data[i];
-                        // invert keys and values for the dropdown
-                        var id = property["id"];
-                        var description = property["description"];
-                        ctrl.platformMapOptions[description] = id;
-                        ctrl.platformMap[id] = description;
-                    }
-                }).error(function (error) {
+                getPlatformMap().then(function (data) {
+                    ctrl.platformMapOptions = invertObject(data);
+                    ctrl.platformMap = data;
+                }).catch(function (error) {
                     ctrl.showError = true;
                     ctrl.error = 'Error retrieving version list: ' +
                         angular.toJson(error);

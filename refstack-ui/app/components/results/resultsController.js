@@ -20,7 +20,8 @@
         .controller('ResultsController', ResultsController);
 
     ResultsController.$inject = [
-        '$scope', '$http', '$filter', '$state', 'refstackApiUrl','raiseAlert'
+        '$scope', '$http', '$filter', '$state', 'refstackApiUrl','raiseAlert',
+        'getVersionList', 'getPlatformMap', 'invertObject'
     ];
 
     /**
@@ -29,19 +30,21 @@
      * a listing of community uploaded results.
      */
     function ResultsController($scope, $http, $filter, $state, refstackApiUrl,
-        raiseAlert) {
+                               raiseAlert, getVersionList, getPlatformMap, invertObject) {
         var ctrl = this;
 
         ctrl.update = update;
         ctrl.open = open;
         ctrl.clearFilters = clearFilters;
+        ctrl.updatePlatformMap = updatePlatformMap;
         ctrl.associateMeta = associateMeta;
-        ctrl.getVersionList = getVersionList;
+        ctrl.updateVersionList = updateVersionList;
         ctrl.getUserProducts = getUserProducts;
         ctrl.getVendors = getVendors;
         ctrl.associateProductVersion = associateProductVersion;
         ctrl.getProductVersions = getProductVersions;
         ctrl.prepVersionEdit = prepVersionEdit;
+        // TODO: We need to retrieve this from metadata on first load
         if (ctrl.target === 'dns' || ctrl.target === 'orchestration') {
             ctrl.gl_type = ctrl.target;
         } else {
@@ -49,14 +52,10 @@
         }
 
         /** Mappings of Interop WG components to marketing program names. */
-        // TODO: remove this hardcoding
-        ctrl.targetMappings = {
-            'platform': 'Openstack Powered Platform',
-            'compute': 'OpenStack Powered Compute',
-            'object': 'OpenStack Powered Object Storage',
-            'dns': 'OpenStack with DNS',
-            'orchestration': 'OpenStack with Orchestration'
-        };
+        ctrl.targetMappings = {};
+
+        /** Marketing program names to interop WG components **/
+        ctrl.targetOptions = {};
 
         /** Initial page to be on. */
         ctrl.currentPage = 1;
@@ -170,6 +169,15 @@
             ctrl.update();
         }
 
+        function updateTarget(target) {
+            ctrl.target = target;
+            if (ctrl.target === 'dns' || ctrl.target === 'orchestration') {
+                ctrl.gl_type = ctrl.target;
+            } else {
+                ctrl.gl_type = 'powered';
+            }
+        }
+
         /**
          * This will send an API request in order to associate a metadata
          * key-value pair with the given testId
@@ -182,7 +190,9 @@
             var metaUrl = [
                 refstackApiUrl, '/results/', testId, '/meta/', key
             ].join('');
-
+            if (key === "target") {
+                updateTarget(value);
+            }
             var editFlag = key + 'Edit';
             if (value) {
                 ctrl.associateRequest = $http.post(metaUrl, value)
@@ -213,18 +223,15 @@
          * a scoped variable.
          * Sample API return array: ["2015.03.json", "2015.04.json"]
          */
-        function getVersionList() {
-            if (ctrl.versionList) {
-                return;
-            }
-            var content_url = refstackApiUrl + '/guidelines';
+        function updateVersionList(target=ctrl.target) {
+            updateTarget(target);
             ctrl.versionsRequest =
-                $http.get(content_url).success(function (data) {
-                    // NEED TO sort after grabbing the GL_TYPE DATA
-                    let gl_files = data[ctrl.gl_type];
-                    ctrl.versionList = gl_files.map((gl_obj) => gl_obj.name);
+                getVersionList(ctrl.gl_type).then(function (data) {
+                    ctrl.versionList = data;
+                    // Default to the first approved guideline which is expected
+                    // to be at index 1.
                     ctrl.version = ctrl.versionList[1];
-                }).error(function (error) {
+                }).catch(function (error) {
                     raiseAlert('danger', error.title,
                                'Unable to retrieve version list');
                 });
@@ -344,5 +351,17 @@
             ctrl.getProductVersions(result);
         }
 
+        function updatePlatformMap() {
+            ctrl.targetsRequest =
+                getPlatformMap().then(function (data) {
+                    console.log(ctrl.targetOptions);
+                    ctrl.targetOptions = invertObject(data);
+                    ctrl.targetMappings = data;
+                }).catch(function (error) {
+                    raiseAlert('danger', error.title, error.detail);
+                });
+        }
+
+        updatePlatformMap();
     }
 })();
