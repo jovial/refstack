@@ -286,7 +286,7 @@
         .controller('TestListModalController', TestListModalController);
 
     TestListModalController.$inject = [
-        '$uibMod2alInstance', '$http', 'version',
+        '$uibModalInstance', '$http', 'version',
         'gl_type', 'target', 'status',
         'refstackApiUrl'
     ];
