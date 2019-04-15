@@ -21,7 +21,8 @@
 
     ResultsReportController.$inject = [
         '$http', '$stateParams', '$window',
-        '$uibModal', 'refstackApiUrl', 'raiseAlert'
+        '$uibModal', 'refstackApiUrl', 'raiseAlert', 'getPlatformMap',
+        'getVersionList', 'invertObject'
     ];
 
     /**
@@ -30,11 +31,12 @@
      * view details for a specific test run.
      */
     function ResultsReportController($http, $stateParams, $window,
-        $uibModal, refstackApiUrl, raiseAlert) {
+                                     $uibModal, refstackApiUrl, raiseAlert,
+                                     getPlatformMap, getVersionList, invertObject) {
 
         var ctrl = this;
 
-        ctrl.getVersionList = getVersionList;
+        ctrl.updateVersionList = updateVersionList;
         ctrl.getResults = getResults;
         ctrl.isResultAdmin = isResultAdmin;
         ctrl.isShared = isShared;
@@ -54,7 +56,6 @@
         ctrl.getStatusTestCount = getStatusTestCount;
         ctrl.openFullTestListModal = openFullTestListModal;
         ctrl.openEditTestModal = openEditTestModal;
-        getVersionList();
 
         /** The testID extracted from the URL route. */
         ctrl.testId = $stateParams.testID;
@@ -63,14 +64,11 @@
         ctrl.target = 'platform';
 
         /** Mappings of Interop WG components to marketing program names. */
-        // TODO: hardcoding
-        ctrl.targetMappings = {
-            'platform': 'Openstack Powered Platform',
-            'compute': 'OpenStack Powered Compute',
-            'object': 'OpenStack Powered Object Storage',
-            'dns': 'OpenStack with DNS',
-            'orchestration': 'OpenStack with orchestration'
-        };
+        ctrl.targetMappings = {};
+
+        /** Marketing program names to interop WG components **/
+        ctrl.targetOptions = {};
+
 
         /** The schema version of the currently selected guideline data. */
         ctrl.schemaVersion = null;
@@ -82,6 +80,16 @@
         ctrl.detailsTemplate = 'components/results-report/partials/' +
                                'reportDetails.html';
 
+
+        function updateTarget(target) {
+            ctrl.target = target;
+            if (ctrl.target === 'dns' || ctrl.target === 'orchestration') {
+                ctrl.gl_type = ctrl.target;
+            } else {
+                ctrl.gl_type = 'powered';
+            }
+        }
+
         /**
          * Retrieve an array of available guideline files from the Refstack
          * API server, sort this array reverse-alphabetically, and store it in
@@ -90,34 +98,16 @@
          * call, the function to update the capabilities is called.
          * Sample API return array: ["2015.03.json", "2015.04.json"]
          */
-        function getVersionList() {
-            if (ctrl.target === 'dns' || ctrl.target === 'orchestration') {
-                ctrl.gl_type = ctrl.target;
-
-            } else {
-                ctrl.gl_type = 'powered';
-            }
-            var content_url = refstackApiUrl + '/guidelines';
+        function updateVersionList(target=ctrl.target) {
+            updateTarget(target);
             ctrl.versionsRequest =
-                $http.get(content_url).success(function (data) {
-                    let gl_files = data[ctrl.gl_type];
-                    let gl_names = gl_files.map((gl_obj) => gl_obj.name);
-                    ctrl.versionList = gl_names.sort().reverse();
-                    let file_names = gl_files.map((gl_obj) => gl_obj.file);
-                    ctrl.fileList = file_names.sort().reverse();
-
-                    if (!ctrl.version) {
-                        // Default to the first approved guideline which is
-                        // expected to be at index 1.
-                        ctrl.version = ctrl.versionList[1];
-                        ctrl.versionFile = ctrl.fileList[1];
-                    } else {
-                        let versionIndex =
-                            ctrl.versionList.indexOf(ctrl.version);
-                        ctrl.versionFile = ctrl.fileList[versionIndex];
-                    }
+                getVersionList(ctrl.gl_type).then(function (data) {
+                    ctrl.versionList = data;
+                    // Default to the first approved guideline which is expected
+                    // to be at index 1.
+                    ctrl.version = ctrl.versionList[1];
                     ctrl.updateGuidelines();
-                }).error(function (error) {
+                }).catch(function (error) {
                     ctrl.showError = true;
                     ctrl.error = 'Error retrieving version list: ' +
                         angular.toJson(error);
@@ -140,7 +130,7 @@
                     if (ctrl.resultsData.meta.target) {
                         ctrl.target = ctrl.resultsData.meta.target;
                     }
-                    getVersionList();
+                    updateVersionList();
                 }).error(function (error) {
                     ctrl.showError = true;
                     ctrl.resultsData = null;
@@ -244,11 +234,11 @@
             ctrl.guidelineData = null;
             ctrl.showError = false;
 
-            ctrl.content_url = refstackApiUrl + '/guidelines/' +
-                ctrl.versionFile;
-            let getparams = {'gl_file': ctrl.versionFile};
+            ctrl.content_url = refstackApiUrl + '/targets/' + ctrl.gl_type + "/versions/"
+                + ctrl.version;
             ctrl.capsRequest =
-                $http.get(ctrl.content_url, getparams).success(function (data) {
+                $http.get(ctrl.content_url).success(
+                    function (data) {
                     ctrl.guidelineData = data;
                     if ('metadata' in data && data.metadata.schema >= '2.0') {
                         ctrl.schemaVersion = data.metadata.schema;
@@ -288,7 +278,7 @@
             // If it has not been updated since the last program type change,
             // will need to update the list
             if (old_type !== ctrl.gl_type) {
-                ctrl.getVersionList();
+                ctrl.updateVersionList();
                 return false;
             }
 
@@ -299,11 +289,7 @@
                 if ('add-ons' in ctrl.guidelineData) {
                     targetComponents = ['os_powered_' + ctrl.target];
                 } else if (ctrl.schemaVersion >= '2.0') {
-                    var platformsMap = {
-                        'platform': 'OpenStack Powered Platform',
-                        'compute': 'OpenStack Powered Compute',
-                        'object': 'OpenStack Powered Storage',
-                    };
+                    var platformsMap = ctrl.targetMappings;
                     targetComponents = ctrl.guidelineData.platforms[
                         platformsMap[ctrl.target]].components.map(
                             function(c) {
@@ -696,6 +682,18 @@
             });
         }
 
+        function updatePlatformMap() {
+            ctrl.targetsRequest =
+                getPlatformMap().then(function (data) {
+                    ctrl.targetOptions = invertObject(data);
+                    ctrl.targetMappings = data;
+                }).catch(function (error) {
+                    raiseAlert('danger', error.title, error.detail);
+                });
+        }
+
+        updatePlatformMap();
+        updateVersionList();
         getResults();
     }
 
@@ -739,7 +737,7 @@
 
     EditTestModalController.$inject = [
         '$uibModalInstance', '$http', '$state', 'raiseAlert',
-        'refstackApiUrl', 'resultsData', 'gl_type'
+        'refstackApiUrl', 'resultsData', 'gl_type', 'getVersionList',
     ];
 
     /**
@@ -748,11 +746,11 @@
      * test run metadata.
      */
     function EditTestModalController($uibModalInstance, $http, $state,
-        raiseAlert, refstackApiUrl, resultsData, gl_type) {
+                                     raiseAlert, refstackApiUrl, resultsData, gl_type, getVersionList) {
 
         var ctrl = this;
 
-        ctrl.getVersionList = getVersionList;
+        ctrl.updateVersionList = updateVersionList;
         ctrl.getUserProducts = getUserProducts;
         ctrl.associateProductVersion = associateProductVersion;
         ctrl.getProductVersions = getProductVersions;
@@ -763,7 +761,7 @@
         ctrl.prodVersionCopy = angular.copy(resultsData.product_version);
         ctrl.gl_type = gl_type;
 
-        ctrl.getVersionList();
+        ctrl.updateVersionList();
         ctrl.getUserProducts();
 
         /**
@@ -772,18 +770,15 @@
          * a scoped variable.
          * Sample API return array: ["2015.03.json", "2015.04.json"]
          */
-        function getVersionList() {
-            if (ctrl.versionList) {
-                return;
-            }
-            var content_url = refstackApiUrl + '/guidelines';
-            ctrl.versionsRequest =
-                $http.get(content_url).success(function (data) {
-                    let gl_files = data[ctrl.gl_type];
-                    let gl_names = gl_files.map((gl_obj) => gl_obj.name);
-                    ctrl.versionList = gl_names.sort().reverse();
-                    ctrl.version = ctrl.versionList[1];
-                }).error(function (error) {
+        function updateVersionList(target=ctrl.target) {
+           updateTarget(target);
+           ctrl.versionsRequest =
+                getVersionList(ctrl.gl_type).then(function (data) {
+                ctrl.versionList = data;
+                // Default to the first approved guideline which is expected
+                // to be at index 1.
+                ctrl.version = ctrl.versionList[1];
+                }).catch(function (error) {
                     raiseAlert('danger', error.title,
                                'Unable to retrieve version list');
                 });
@@ -926,5 +921,18 @@
         ctrl.close = function () {
             $uibModalInstance.dismiss('exit');
         };
+
+        function updatePlatformMap() {
+            ctrl.targetsRequest =
+                getPlatformMap().then(function (data) {
+                    ctrl.targetOptions = invertObject(data);
+                    ctrl.targetMappings = data;
+                }).catch(function (error) {
+                    raiseAlert('danger', error.title, error.detail);
+                });
+        }
+
+        updatePlatformMap();
+
     }
 })();

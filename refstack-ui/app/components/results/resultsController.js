@@ -354,7 +354,6 @@
         function updatePlatformMap() {
             ctrl.targetsRequest =
                 getPlatformMap().then(function (data) {
-                    console.log(ctrl.targetOptions);
                     ctrl.targetOptions = invertObject(data);
                     ctrl.targetMappings = data;
                 }).catch(function (error) {

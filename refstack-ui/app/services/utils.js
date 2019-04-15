@@ -33,7 +33,6 @@
         .module('refstackApp')
         .factory('getPlatformMap', ['$http', 'refstackApiUrl', function($http, refstackApiUrl) {
             return function() {
-                var content_url = refstackApiUrl + '/targets';
                 console.log("mappins");
                 return $http.get(content_url).then(function(response) {
                     var data = response.data;

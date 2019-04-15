@@ -1,3 +1,4 @@
+
 <h3>Test Run Results</h3>
 
 <div ng-show="ctrl.resultsData"  class="container-fluid">
@@ -76,7 +77,7 @@
             <select ng-model="ctrl.version"
                     ng-change="ctrl.updateGuidelines()"
                     class="form-control"
-                    ng-options="versionFile.slice(0,-5) for versionFile in ctrl.versionList">
+                    ng-options="version for version in ctrl.versionList">
             </select>
         </div>
         <div class="col-md-4">
@@ -110,7 +111,7 @@
         <strong>Status:</strong>
         <p>This cloud passes <strong>{{ctrl.requiredPassPercent | number:1}}% </strong>
            ({{ctrl.caps.required.passedCount}}/{{ctrl.caps.required.count}})
-           of the tests in the <strong>{{ctrl.version.slice(0, -5)}}</strong> <em>required</em> capabilities for the
+           of the tests in the <strong>{{ctrl.version}}</strong> <em>required</em> capabilities for the
            <strong>{{ctrl.targetMappings[target]}}</strong> program. <br />
            Excluding flagged tests, this cloud passes
            <strong>{{ctrl.nonFlagRequiredPassPercent | number:1}}%</strong>
@@ -118,7 +119,7 @@
            of the <em>required</em> tests.
         </p>
 
-        <p>Compliance with <strong>{{ctrl.version.slice(0, -5)}}</strong>:
+        <p>Compliance with <strong>{{ctrl.version}}</strong>:
             <strong>
                 <span ng-if="ctrl.nonFlagPassCount === ctrl.totalNonFlagCount" class="yes">YES</span>
                 <span ng-if="ctrl.nonFlagPassCount !== ctrl.totalNonFlagCount" class="no">NO</span>

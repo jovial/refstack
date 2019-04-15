@@ -84,7 +84,7 @@
                     </span>
                 </td>
                 <td ng-if="ctrl.isUserResults">{{ctrl.targetMappings[result.meta.target] || '-'}}</td>
-                <td ng-if="ctrl.isUserResults">{{result.meta.guideline.slice(0, -5) || '-'}}</td>
+                <td ng-if="ctrl.isUserResults">{{result.meta.guideline || '-'}}</td>
                 <td ng-if="ctrl.isUserResults">
                     <span ng-if="result.verification_status" class="glyphicon glyphicon-ok"></span>
                     <span ng-if="!result.verification_status">-</span>
