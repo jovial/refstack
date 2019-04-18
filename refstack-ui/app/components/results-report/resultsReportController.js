@@ -104,8 +104,11 @@
                 getVersionList(ctrl.gl_type).then(function (data) {
                     ctrl.versionList = data;
                     // Default to the first approved guideline which is expected
-                    // to be at index 1.
-                    ctrl.version = ctrl.versionList[1];
+                    // to be at index 1, but if if the version has not been set
+                    // from the result metadata
+                    if (! ctrl.version) {
+                        ctrl.version = ctrl.versionList[1];
+                    }
                     ctrl.updateGuidelines();
                 }).catch(function (error) {
                     ctrl.showError = true;
